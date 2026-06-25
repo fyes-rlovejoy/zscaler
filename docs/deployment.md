@@ -1,0 +1,116 @@
+# Deployment runbook
+
+Region: `us-gov-west-1` · Account: `341370882819` (`aws-us-gov`)
+
+## Prerequisites
+
+- AWS CLI v2 authenticated as a principal that can create CFN/EC2/IAM/SSM
+  resources in the account.
+- The Zscaler App Connector AMI subscribed in this account
+  (`ami-00814956d4ff7ac6c`, already present as of 2026-06-25).
+- `python3` on the deploy host (used by `deploy.sh` to expand params).
+
+## Order of operations
+
+```
+1. network      → creates the two /28 subnets (+ exports)
+2. (phase 2)    → create ZPA provisioning key, store in SSM   ← see step 3
+3. connectors   → SG, IAM, launch template, ASG
+```
+
+You *can* deploy `connectors` before the provisioning key exists — the stack will
+build fine, but the instances will fail to enroll and log
+`could not read provisioning key` until the SSM parameter is populated. To avoid
+churn, create the key first (step 3 below) when you're ready to actually enroll.
+
+## 1. Validate (optional)
+
+```bash
+./scripts/deploy.sh validate
+```
+
+## 2. Deploy the network stack
+
+```bash
+./scripts/deploy.sh network
+```
+
+This creates `zpa-appconnector-private-1a/1b` and associates them with the
+existing private route table. Verify:
+
+```bash
+aws ec2 describe-subnets --region us-gov-west-1 \
+  --filters Name=tag:Project,Values=zscaler-app-connectors \
+  --query 'Subnets[].{Name:Tags[?Key==`Name`]|[0].Value,Cidr:CidrBlock,AZ:AvailabilityZone}' \
+  --output table
+```
+
+## 3. Create & store the ZPA provisioning key (before enrolling)
+
+Get a provisioning key from the ZPA Admin Portal (or the API — see
+[zscaler-api.md](zscaler-api.md)), then store it as a SecureString:
+
+```bash
+aws ssm put-parameter --region us-gov-west-1 \
+  --name "/zscaler/zpa/provisioning-key" \
+  --type SecureString \
+  --value "<PROVISIONING_KEY>" \
+  --overwrite
+```
+
+(Default uses the AWS-managed `alias/aws/ssm` key; the instance role's
+`kms:Decrypt` is scoped via `kms:ViaService=ssm.us-gov-west-1.amazonaws.com`.)
+
+## 4. Deploy the connector stack
+
+```bash
+./scripts/deploy.sh connectors
+```
+
+Watch the ASG bring up two instances:
+
+```bash
+aws autoscaling describe-auto-scaling-groups --region us-gov-west-1 \
+  --query "AutoScalingGroups[?contains(AutoScalingGroupName,'zpa-app-connectors')].Instances[].{Id:InstanceId,AZ:AvailabilityZone,Health:HealthStatus,State:LifecycleState}" \
+  --output table
+```
+
+## 5. Verify enrollment
+
+- **In AWS** — check the bootstrap log via SSM Session Manager:
+  ```bash
+  aws ssm start-session --region us-gov-west-1 --target <instance-id>
+  sudo tail -n 50 /var/log/zpa-userdata.log
+  sudo systemctl status zpa-connector
+  ```
+- **In Zscaler** — the two connectors appear (and go green/healthy) under the
+  connector group in the ZPA Admin Portal / via the API.
+
+## Updating connectors (new AMI / version)
+
+1. Bump `AppConnectorAmiId` in `cloudformation/params/02-app-connectors.params.json`.
+2. `./scripts/deploy.sh connectors` — the rolling-update policy replaces
+   instances one at a time (`MinInstancesInService=1`), so service stays up.
+3. Prune the now-orphaned old connectors in the ZPA portal/API.
+
+## Rollback / teardown
+
+```bash
+# Compute first (depends on network exports), then network.
+aws cloudformation delete-stack --region us-gov-west-1 --stack-name zpa-app-connectors
+aws cloudformation wait stack-delete-complete --region us-gov-west-1 --stack-name zpa-app-connectors
+aws cloudformation delete-stack --region us-gov-west-1 --stack-name zpa-network
+```
+
+Deleting the network stack will fail while the connector stack still imports its
+exports — delete `zpa-app-connectors` first. The SSM provisioning-key parameter
+is **not** managed by these stacks; remove it separately if desired.
+
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+|---------|--------------------|
+| `could not read provisioning key` in `/var/log/zpa-userdata.log` | SSM param missing/misnamed, or role can't decrypt. Confirm `/zscaler/zpa/provisioning-key` exists as SecureString. |
+| Instances never reach the Zscaler cloud | Egress path — confirm the new subnets are on `rtb-07aa95919af0e668f` and the NAT GW is `available`. |
+| Connector enrolls then drops | Provisioning key exhausted/expired, or duplicate enrollment from ASG churn. Rotate key; prune stale connectors. |
+| `delete-stack` on network fails | Connector stack still exists (import dependency). Delete it first. |

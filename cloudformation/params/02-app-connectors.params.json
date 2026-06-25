@@ -1,0 +1,13 @@
+[
+  { "ParameterKey": "NetworkStackName", "ParameterValue": "zpa-network" },
+  { "ParameterKey": "AppConnectorAmiId", "ParameterValue": "ami-00814956d4ff7ac6c" },
+  { "ParameterKey": "InstanceType", "ParameterValue": "m5.large" },
+  { "ParameterKey": "RootVolumeSizeGb", "ParameterValue": "30" },
+  { "ParameterKey": "MinSize", "ParameterValue": "2" },
+  { "ParameterKey": "MaxSize", "ParameterValue": "4" },
+  { "ParameterKey": "DesiredCapacity", "ParameterValue": "2" },
+  { "ParameterKey": "ProvisioningKeySsmParam", "ParameterValue": "/zscaler/zpa/provisioning-key" },
+  { "ParameterKey": "KeyPairName", "ParameterValue": "" },
+  { "ParameterKey": "AllowSshCidr", "ParameterValue": "" },
+  { "ParameterKey": "ProjectTag", "ParameterValue": "zscaler-app-connectors" }
+]

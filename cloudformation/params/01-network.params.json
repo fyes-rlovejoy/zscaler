@@ -1,0 +1,9 @@
+[
+  { "ParameterKey": "VpcId", "ParameterValue": "vpc-09b4dbbf955d7862f" },
+  { "ParameterKey": "PrivateRouteTableId", "ParameterValue": "rtb-07aa95919af0e668f" },
+  { "ParameterKey": "AvailabilityZone1", "ParameterValue": "us-gov-west-1a" },
+  { "ParameterKey": "SubnetCidr1", "ParameterValue": "172.32.10.192/28" },
+  { "ParameterKey": "AvailabilityZone2", "ParameterValue": "us-gov-west-1b" },
+  { "ParameterKey": "SubnetCidr2", "ParameterValue": "172.32.10.208/28" },
+  { "ParameterKey": "ProjectTag", "ParameterValue": "zscaler-app-connectors" }
+]

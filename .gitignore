@@ -1,0 +1,22 @@
+# Local AWS / secrets — never commit
+*.pem
+*.key
+.env
+.env.*
+*credentials*
+*secret*
+
+# Resolved/packaged templates
+*.packaged.yaml
+packaged-*.yaml
+
+# Editor / OS noise
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Local CFN output
+cfn-output-*.json
+.claude/
