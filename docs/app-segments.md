@@ -59,7 +59,7 @@ group was created for these apps.
 | App segment | `lgb-pve0` | `72058199628316753` | `10.1.2.20` **and** `lgb-pve0.corp.jetzero.aero`, TCP 22/80/443 (user) |
 | App segment | `lgb-ad-services` | `72058199628316755` | `corp.jetzero.aero` + `lgb-dc1.corp.jetzero.aero` — AD essential-6: TCP 53/88/135/389/445/464, UDP 53/88/389/464 |
 | App segment | `lgb-corp-smb` | `72058199628316756` | **`*.corp.jetzero.aero`** TCP **445** — SMB to any corp file server (DFS targets) |
-| App segment | `lgb-jz-netbios-test` | `72058199628316757` | single-label **`jz`** TCP 445 — best-effort NetBIOS-domain test |
+| App segment | `lgb-dfs1-smb` | `72058199628316761` | exact `lgb-dfs1.corp.jetzero.aero` TCP **445** — DFS namespace server (un-shadows the wildcard) |
 | Access rule | `Allow lgb-zpa-segment-grp` | `72058199628316754` | ALLOW to all authenticated users (covers all lgb apps above) |
 
 ### AD / DFS / SMB design notes
@@ -67,14 +67,14 @@ group was created for these apps.
 - **Most-specific-match shadowing gotcha (real one we hit):** the DFS referral for `\\corp.jetzero.aero\share` is FQDN (`\\LGB-DFS1.CORP.JETZERO.AERO\Share`), so the namespace server is `lgb-dfs1`. But `lgb-dfs1` already had an **exact-FQDN** segment (`LGB-DFS1-RDP`, 3389 only); ZPA matches the most-specific domain segment, so SMB **445** to `lgb-dfs1` was shadowed out (the `*.corp:445` wildcard is less specific and didn't apply). `lgb-nas0` worked only because it had no exact segment. Fix: an **exact** `lgb-dfs1-smb` (`...761`, `lgb-dfs1.corp.jetzero.aero:445`) in the user group. **Lesson:** if an FQDN has any exact segment, every port you need for that FQDN must be on an exact segment too — the wildcard won't backfill it.
 - **DFS short-name referral gotcha:** referrals currently return `\\lgb-nas0\…` (no domain). Fix on the AD side by re-adding the DFS **folder targets** as FQDNs (`\\lgb-nas0.corp.jetzero.aero\…`) and removing the short ones — **no namespace recreation needed**. On **domain-joined** clients the `corp.jetzero.aero` DNS suffix is already appended, so short referrals often resolve to the FQDN and hit the wildcard anyway.
 - **DNS search suffix** (for non-domain-joined clients) is a **Zscaler Client Connector** App-Profile setting (ZCC/Mobile portal), *not* a ZPA-API/app-segment setting.
-- **NetBIOS `\\jz\`:** ZPA has no NetBIOS/WINS path; the `jz` single-label segment is **best-effort** (suffixing `jz` yields `jz.corp.jetzero.aero`, not a host). Standardize users on `\\corp.jetzero.aero\…`.
+- **NetBIOS `\\jz\` — confirmed not workable, test segment removed.** ZPA has no NetBIOS/WINS path and the bare `jz` single label doesn't resolve (`nslookup jz` = NXDOMAIN), so `\\jz\share` fails even though `\\corp.jetzero.aero\share` works. Standardize users on the FQDN path (push via GPO/login-script drive mapping). Only way to make `\\jz\` resolve would be an AD-DNS **GlobalNames Zone** entry for `jz` → a DC — secondary to just using the FQDN.
 
 ### Admin vs user structure (gating staged, not yet enforced)
 Structure is now in place so enforcing admin-only later is a **one-line change to a single rule** (add a SAML `groups` condition). There are **no users provisioned** yet, so the open rules expose nothing today.
 
 | Segment group | ID | Apps | Access rule (today) | Later |
 |---------------|----|------|---------------------|-------|
-| `lgb-zpa-segment-grp` (user) | `72058199628316751` | `lgb-ad-services`, `lgb-corp-smb`, `lgb-dfs1-smb`, `lgb-jz-netbios-test` | `Allow lgb-zpa-segment-grp` (`...754`) — all auth | keep (users) |
+| `lgb-zpa-segment-grp` (user) | `72058199628316751` | `lgb-ad-services`, `lgb-corp-smb`, `lgb-dfs1-smb` | `Allow lgb-zpa-segment-grp` (`...754`) — all auth | keep (users) |
 | `lgb-admin-zpa-segment-grp` (admin) | `72058199628316758` | `LGB-DFS1-RDP` (3389), `lgb-pve0` (22/80/443), `lgb-dc1-rdp` (3389, `lgb-dc1.corp.jetzero.aero`/`10.1.130.10`) | `Allow lgb-admin-zpa-segment-grp` (`72058199628316759`) — all auth | **add SAML groups = admin Entra group** to rule `...759` |
 
 To enforce admin-only later, add an identity operand to rule `72058199628316759`:
