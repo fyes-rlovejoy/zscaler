@@ -25,16 +25,23 @@ live in SSM Parameter Store, `/zscaler/zpa/`:
 > ⚠️ The API key was exposed in a terminal session while being stored — **rotate
 > it** in the ZPA portal once phase 2 is validated and re-store the new value.
 
-## ZPA API basics (to confirm against the tenant)
+## ZPA API basics (CONFIRMED 2026-06-25)
 
-- **Cloud/host:** Gov tenant (`zpagov.us`). The ZPA **API base host** for Gov is
-  *not* the commercial `config.private.zscaler.com` — confirm the Gov config
-  host before writing requests.
-- **Auth — OPEN:** legacy ZPA API uses OAuth2 **client_id + client_secret** →
-  `POST {base}/signin` → bearer token, with the customer ID in resource paths. We
-  currently have a **single API key** + customer ID, which doesn't match that
-  two-part scheme — need to confirm whether this is a OneAPI/ZIdentity key, a
-  client_secret (and where the client_id is), or a standalone key.
+- **Cloud/host:** Gov tenant `zpagov.us` → API base **`https://config.zpagov.us`**
+  (GOVUS, legacy API framework; OneAPI/ZIdentity not supported on Gov).
+- **Auth:** legacy OAuth2 **client_id + client_secret** → `POST /signin` → bearer
+  token. ✅ Verified working (HTTP 200, token received). The value first stored as
+  "api key" was the **client_secret**; the separate **client_id** is now stored too.
+- **Full endpoint/ID reference:** see [zpa-api-reference.md](zpa-api-reference.md).
+
+## Phase-2 plan (ready to execute)
+
+1. Create App Connector Group **`aws-gc-app-con-grp`** (mirrors the working
+   `aws-lz` group; location set for AWS GovCloud us-gov-west-1 / Oregon).
+2. Mint a CONNECTOR_GRP provisioning key (enrollment cert `2875`) for that group.
+3. Store the key in SSM `/zscaler/zpa/provisioning-key` (SecureString).
+4. Scale the ASG to 2 → connectors enroll into the new group.
+5. (Later) define application segments + access policies for user apps.
 - **Key objects:**
   - `App Connector Group` — logical grouping of connectors.
   - `Provisioning Key` (type `CONNECTOR_GRP`) — the enrollment token.
