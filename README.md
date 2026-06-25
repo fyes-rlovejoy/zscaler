@@ -70,10 +70,12 @@ See [`docs/deployment.md`](docs/deployment.md) for the full runbook and
 - [x] **ZPA API wired** — base `config.zpagov.us`, creds in SSM `/zscaler/zpa/api/*` (see [zpa-api-reference.md](docs/zpa-api-reference.md))
 - [x] **Connector group `aws-gc-app-con-grp`** created (id `72058199628316742`, versionProfile Default)
 - [x] **Provisioning key** `aws-gc-app-con-grp-key` (id `2468`, maxUsage 1000) minted → SSM `/zscaler/zpa/provisioning-key`
-- [x] **ASG scaled to 2** — `i-058e320fa1a9a89b4` (1a), `i-0e45efa5b3365e435` (1b) InService
-- [ ] Confirm both connectors show enrolled/healthy in `aws-gc-app-con-grp`
-- [ ] Define application segments + access policies for user apps (next)
+- [x] **ASG scaled to 2** (rolling-updated to launch-template v2 after the enrollment fix)
+- [x] **Both connectors enrolled & healthy** — `ZPN_STATUS_AUTHENTICATED` in `aws-gc-app-con-grp`: `172.32.10.200` (1a), `172.32.10.215` (1b), v26.53.4
+- [ ] Define application segments + server groups + access policies for user apps (phase 2b)
 
-> **App Connectors are deployed and enrolling.** Remaining: confirm green status
-> in the ZPA portal, then define the apps users will reach (application segments,
-> server groups, access policy) — phase 2b.
+> ✅ **App Connectors are live and authenticated to the Zscaler Gov cloud.**
+> (One enrollment bug fixed along the way — the provisioning key must be readable
+> by the `zscaler` user, not `root:root 0600`; see [decisions.md](docs/decisions.md) D9.)
+> Remaining work is **phase 2b**: defining the internal apps users will reach
+> (application segments, server groups, access policy).
