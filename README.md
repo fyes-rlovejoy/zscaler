@@ -72,8 +72,12 @@ See [`docs/deployment.md`](docs/deployment.md) for the full runbook and
 - [x] **Provisioning key** `aws-gc-app-con-grp-key` (id `2468`, maxUsage 1000) minted → SSM `/zscaler/zpa/provisioning-key`
 - [x] **ASG scaled to 2** (rolling-updated to launch-template v2 after the enrollment fix)
 - [x] **Both connectors enrolled & healthy** — `ZPN_STATUS_AUTHENTICATED` in `aws-gc-app-con-grp`: `172.32.10.200` (1a), `172.32.10.215` (1b), v26.53.4
-- [x] **Phase 2b started** — `gc.jetzero.aero` published via aws-gc connectors: `aws-gc-zpa-server-grp` + segment group, `*.gc.jetzero.aero` wildcard + `utility-win0` RDP (3389) app segments, ALLOW access rule, and the `tc_prod_sg` 3389 firewall rule. End-to-end RDP path verified. See [app-segments.md](docs/app-segments.md).
-- [ ] Publish remaining apps (e.g. lgb `10.1.0.0/16` by subnet) + decide on the `AWS`/`Sophos` placeholder cleanup
+- [x] **Phase 2b** — apps published (see [app-segments.md](docs/app-segments.md)):
+  - **gc**: `*.gc.jetzero.aero` wildcard + `utility-win0` RDP (3389), `tc_prod_sg` firewall rule, end-to-end verified
+  - **lgb**: per-app (zero-trust) — `lgb-pve0` (`10.1.2.20`/`lgb-pve0.corp.jetzero.aero`, SSH/HTTP/HTTPS); broad subnet intentionally skipped
+  - Cleanup: deleted orphaned `*.jetzero.aero` sample objects; removed unused `AWS`/`Sophos` placeholder connector groups + keys
+- [ ] **Admin-vs-user access** (group-based policy) — wire the Entra `groups` SAML claim when ready; restrict `lgb-pve0` if it's admin-only
+- [ ] Verify lgb path (lgb DNS registration of `lgb-pve0`, host firewall to `10.1.2.20`) — not testable from this account
 
 > ✅ **App Connectors live; first apps published.** Users can reach
 > `gc.jetzero.aero` (incl. RDP to `utility-win0`) through the aws-gc connectors.

@@ -44,6 +44,48 @@ aws ec2 authorize-security-group-ingress --region us-gov-west-1 --group-id sg-0c
 Verified: from the connector subnet, `172.30.1.134:3389` and
 `utility-win0.gc.jetzero.aero:3389` are both reachable (OPEN).
 
+## lgb — specific apps (corp.jetzero.aero)
+
+We chose **per-app (zero-trust)** for lgb rather than a broad `10.1.0.0/16` subnet
+segment. A wide-open subnet behaves like a traditional VPN (reach anything in the
+subnet); the per-app model publishes only the exact host+ports needed. `lgb-dcs-grp`
+is a *static* server group (single server `lgb-dc1`), so a new **dynamic** server
+group was created for these apps.
+
+| Object | Name | ID | Detail |
+|--------|------|----|--------|
+| Segment group | `lgb-zpa-segment-grp` | `72058199628316751` | |
+| Server group | `lgb-zpa-server-grp` | `72058199628316752` | `dynamicDiscovery=true`, bound to `lgb-pve-zpa-app-con-grp` (`72058199628316729`) |
+| App segment | `lgb-pve0` | `72058199628316753` | `10.1.2.20` **and** `lgb-pve0.corp.jetzero.aero`, TCP 22/80/443 |
+| Access rule | `Allow lgb-zpa-segment-grp` | `72058199628316754` | ALLOW to all authenticated users |
+
+**Defined by IP and FQDN on purpose:** the IP (`10.1.2.20`) works immediately; the
+FQDN (`lgb-pve0.corp.jetzero.aero`) starts working once it's registered in the lgb
+AD DNS (`lgb-dc1` = `10.1.130.10`) — no rework needed.
+
+> ⚠️ **Unverified from this account** (the lgb network / `lgb-pve` connectors are
+> not in this GovCloud account, so unlike gc this couldn't be tested here):
+> - whether `lgb-pve0.corp.jetzero.aero` is registered in the lgb DNS;
+> - whether the `lgb-pve` connectors can route to `10.1.2.20` and its host firewall
+>   allows them on 22/80/443.
+> The lgb admin should confirm both.
+
+> ⚠️ **Access scope:** `lgb-pve0` looks like a **Proxmox VE hypervisor** management
+> interface (ssh/web). It's currently open to **all authenticated users** to match
+> the existing pattern. If it should be **admin-only**, that's the trigger to wire
+> Entra group-based policy (SAML `groups` claim, attr `72058199628316728`) and
+> re-gate this rule — see "Admin vs user access" below.
+
+## Admin vs user access (not yet wired)
+
+Pattern available for later: broad access for admins, specific apps for users.
+The `Microsoft` USER IdP (`72058199628316717`) already emits a SAML **groups**
+claim (attribute `72058199628316728`) — so group-scoped access rules are possible
+**without SCIM**. To enable, supply the admin Entra group's claim value (Object ID
+by default, or name) and we add a `SAML` condition to the relevant access rule(s).
+Entra side: set the Zscaler app's groups claim to "Groups assigned to the
+application" to avoid the >150-group overage truncation.
+
 ## Per-environment publishing strategy
 
 `corp.jetzero.aero` resources exist in **more than one** network, so a single
@@ -54,9 +96,12 @@ connectors:
 
 | Environment | Scope | Server group → connectors | Status |
 |-------------|-------|---------------------------|--------|
-| aws-lz | `172.17.0.0/16` (by subnet) | `aws-lz-zpa-server-grp` → `aws-lz-zpa-app-con-grp` | exists |
-| lgb | `10.1.0.0/16` (by subnet) | `lgb-dcs-grp` → `lgb-pve-zpa-app-con-grp` | **pattern only — not yet created** |
-| aws-gc | `*.gc.jetzero.aero` (by domain) | `aws-gc-zpa-server-grp` → `aws-gc-app-con-grp` | created (above) |
+| aws-lz | `172.17.0.0/16` (by subnet, TCP 443/22) | `aws-lz-zpa-server-grp` → `aws-lz-zpa-app-con-grp` | exists |
+| lgb | **per-app** (e.g. `lgb-pve0`); broad `10.1.0.0/16` subnet intentionally skipped | `lgb-zpa-server-grp` (dynamic) → `lgb-pve-zpa-app-con-grp` | created (above) |
+| aws-gc | `*.gc.jetzero.aero` (by domain) | `aws-gc-zpa-server-grp` → `aws-gc-app-con-grp` | created |
+
+(`10.1.0.0/16`-by-subnet remains a valid option if you later want VPN-style broad
+lgb access — best gated to an admin group, not all users.)
 
 ## Cleanup (2026-06-25)
 
