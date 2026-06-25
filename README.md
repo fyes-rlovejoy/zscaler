@@ -66,11 +66,14 @@ See [`docs/deployment.md`](docs/deployment.md) for the full runbook and
 - [x] CloudFormation written + validated (subnets + ASG/launch template)
 - [x] **Network stack deployed** (`zpa-network`): subnets `subnet-085c421a7cb00abb2` (1a), `subnet-0dbc8b2a2eea9086e` (1b)
 - [x] **ZPA App Connector Marketplace subscription** active (`by1wc5269g0048ix2nqvr0362`, AMI `ami-0205b8fb8ca4d9883`)
-- [x] **Connector stack deployed** (`zpa-app-connectors`) — standing by at **desired=0** (no provisioning key yet). ASG `zpa-app-connectors-zpa-appconnectors`, SG `sg-008f102ef0043d5f1`, LT `lt-09908ff726d3505fa`
-- [ ] ZPA provisioning key created & stored in SSM (phase 2 — Zscaler API)
-- [ ] Scale ASG to 2 and confirm connectors enroll & serve apps
+- [x] **Connector stack deployed** (`zpa-app-connectors`). ASG `zpa-app-connectors-zpa-appconnectors`, SG `sg-008f102ef0043d5f1`, LT `lt-09908ff726d3505fa`
+- [x] **ZPA API wired** — base `config.zpagov.us`, creds in SSM `/zscaler/zpa/api/*` (see [zpa-api-reference.md](docs/zpa-api-reference.md))
+- [x] **Connector group `aws-gc-app-con-grp`** created (id `72058199628316742`, versionProfile Default)
+- [x] **Provisioning key** `aws-gc-app-con-grp-key` (id `2468`, maxUsage 1000) minted → SSM `/zscaler/zpa/provisioning-key`
+- [x] **ASG scaled to 2** — `i-058e320fa1a9a89b4` (1a), `i-0e45efa5b3365e435` (1b) InService
+- [ ] Confirm both connectors show enrolled/healthy in `aws-gc-app-con-grp`
+- [ ] Define application segments + access policies for user apps (next)
 
-> **Next:** once the provisioning key is in SSM (`/zscaler/zpa/provisioning-key`),
-> bring the connectors up with `./scripts/deploy.sh connectors` (params set
-> desired=2). The stack is currently deployed at desired=0 so nothing bills until
-> the connectors can actually enroll.
+> **App Connectors are deployed and enrolling.** Remaining: confirm green status
+> in the ZPA portal, then define the apps users will reach (application segments,
+> server groups, access policy) — phase 2b.
