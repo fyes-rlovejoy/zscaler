@@ -152,4 +152,6 @@ is **not** managed by these stacks; remove it separately if desired.
 | `could not read provisioning key` in `/var/log/zpa-userdata.log` | SSM param missing/misnamed, or role can't decrypt. Confirm `/zscaler/zpa/provisioning-key` exists as SecureString. |
 | Instances never reach the Zscaler cloud | Egress path — confirm the new subnets are on `rtb-07aa95919af0e668f` and the NAT GW is `available`. |
 | Connector enrolls then drops | Provisioning key exhausted/expired, or duplicate enrollment from ASG churn. Rotate key; prune stale connectors. |
+| `Cannot get provisioning key ...` in `journalctl -u zpa-connector`, `usageCount` stays 0 | The key file must be readable by the **`zscaler`** user (the connector child runs as `zscaler`, not root). Ensure user-data does `chown zscaler:zscaler /opt/zscaler/var/provision_key && chmod 640` — **not** `chmod 600` root:root. |
+| Need to debug the appliance | No SSM agent / no key pair by default. Temporarily add `KeyPairName` + an SSH ingress rule, launch one connector, and SSH from an in-VPC bastion; read `journalctl -u zpa-connector` and `systemctl status zpa-connector`. Revert the SG rule after. |
 | `delete-stack` on network fails | Connector stack still exists (import dependency). Delete it first. |

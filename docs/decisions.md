@@ -71,6 +71,21 @@ imports them via `Fn::ImportValue` keyed on the network stack name.
 lets us update the ASG/launch template without touching subnets. Matches the
 user's phased plan (network → connectors → API).
 
+## D9 — provision_key must be owned by the `zscaler` user (enrollment bug)
+**Decision:** User-data writes `/opt/zscaler/var/provision_key` then
+`chown zscaler:zscaler` + `chmod 640` it (was `chmod 600` root:root — broken).
+**Why:** The `zpa-connector-child` process runs as the **`zscaler`** user, not
+root. A `root:root 0600` key is unreadable by it, so the connector logged
+`Cannot get provisioning key, please check if provision_key exists in the current
+working directory` on a loop and **never enrolled** (`usageCount` stayed 0) even
+though the file was present, the key was valid, and the network reached the Gov
+cloud. Root-caused on 2026-06-25 by SSHing into a debug connector and reading
+`journalctl -u zpa-connector`; `chown` to the `zscaler` user → immediate broker
+connection (`broker8a.pdx2.zpagov.us:443`) and `ZPN_STATUS_AUTHENTICATED`.
+**Lesson:** the connector reaches the cloud over **IPv4** (`config.zpagov.us` and
+`broker*.pdx2.zpagov.us`); the appliance has no SSM agent, so debugging needs SSH
+via a bastion. See [deployment.md](deployment.md#troubleshooting).
+
 ---
 _Open items / revisit later:_
 - Connector group strategy & naming (phase 2, ZPA portal/API).

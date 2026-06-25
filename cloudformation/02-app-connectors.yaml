@@ -240,9 +240,14 @@ Resources:
               fi
 
               # Write the provisioning key and enroll into the ZPA cloud.
+              # IMPORTANT: zpa-connector-child runs as the 'zscaler' user and must
+              # be able to read the key. A root:root 0600 file makes the connector
+              # log "Cannot get provisioning key" and never enroll, so own it by
+              # the zscaler user with group-read (0640).
               mkdir -p /opt/zscaler/var
               echo "$PK" > /opt/zscaler/var/provision_key
-              chmod 600 /opt/zscaler/var/provision_key
+              chown zscaler:zscaler /opt/zscaler/var/provision_key 2>/dev/null || true
+              chmod 640 /opt/zscaler/var/provision_key
               unset PK
 
               systemctl enable zpa-connector
