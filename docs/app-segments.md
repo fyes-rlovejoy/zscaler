@@ -56,8 +56,20 @@ group was created for these apps.
 |--------|------|----|--------|
 | Segment group | `lgb-zpa-segment-grp` | `72058199628316751` | |
 | Server group | `lgb-zpa-server-grp` | `72058199628316752` | `dynamicDiscovery=true`, bound to `lgb-pve-zpa-app-con-grp` (`72058199628316729`) |
-| App segment | `lgb-pve0` | `72058199628316753` | `10.1.2.20` **and** `lgb-pve0.corp.jetzero.aero`, TCP 22/80/443 |
-| Access rule | `Allow lgb-zpa-segment-grp` | `72058199628316754` | ALLOW to all authenticated users |
+| App segment | `lgb-pve0` | `72058199628316753` | `10.1.2.20` **and** `lgb-pve0.corp.jetzero.aero`, TCP 22/80/443 (user) |
+| App segment | `lgb-ad-services` | `72058199628316755` | `corp.jetzero.aero` + `lgb-dc1.corp.jetzero.aero` — AD essential-6: TCP 53/88/135/389/445/464, UDP 53/88/389/464 |
+| App segment | `lgb-corp-smb` | `72058199628316756` | **`*.corp.jetzero.aero`** TCP **445** — SMB to any corp file server (DFS targets) |
+| App segment | `lgb-jz-netbios-test` | `72058199628316757` | single-label **`jz`** TCP 445 — best-effort NetBIOS-domain test |
+| Access rule | `Allow lgb-zpa-segment-grp` | `72058199628316754` | ALLOW to all authenticated users (covers all lgb apps above) |
+
+### AD / DFS / SMB design notes
+- **DFS is a domain-based namespace** (`\\corp.jetzero.aero\…`). The client gets a referral from a DC → namespace server (`lgb-dfs1`) → file target (`lgb-nas0`, `10.1.10.18` *(changes)*). So we publish: `corp.jetzero.aero` + the DC (`lgb-ad-services`) and **all** corp file targets via the **`*.corp.jetzero.aero`:445 wildcard** (`lgb-corp-smb`) — IP-churn-proof, SMB-only (not VPN).
+- **DFS short-name referral gotcha:** referrals currently return `\\lgb-nas0\…` (no domain). Fix on the AD side by re-adding the DFS **folder targets** as FQDNs (`\\lgb-nas0.corp.jetzero.aero\…`) and removing the short ones — **no namespace recreation needed**. On **domain-joined** clients the `corp.jetzero.aero` DNS suffix is already appended, so short referrals often resolve to the FQDN and hit the wildcard anyway.
+- **DNS search suffix** (for non-domain-joined clients) is a **Zscaler Client Connector** App-Profile setting (ZCC/Mobile portal), *not* a ZPA-API/app-segment setting.
+- **NetBIOS `\\jz\`:** ZPA has no NetBIOS/WINS path; the `jz` single-label segment is **best-effort** (suffixing `jz` yields `jz.corp.jetzero.aero`, not a host). Standardize users on `\\corp.jetzero.aero\…`.
+
+### Access gating — paused (no users yet)
+There are **no users provisioned** in the tenant yet, so "all authenticated users" exposes nothing today. Admin gating is **deferred**: `LGB-DFS1-RDP` (admin) is left in `Internal Application Group` for now; before provisioning users, re-home admin apps into an admin segment group and gate it to the Entra admin group (see below). `lgb-pve0` is treated as a **user** app per its original framing — reclassify to admin if desired.
 
 **Defined by IP and FQDN on purpose:** the IP (`10.1.2.20`) works immediately; the
 FQDN (`lgb-pve0.corp.jetzero.aero`) starts working once it's registered in the lgb

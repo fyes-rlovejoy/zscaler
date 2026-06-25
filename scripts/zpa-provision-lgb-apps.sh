@@ -57,6 +57,17 @@ SRVGRP_ID="$(ensure 'serverGroup' "$SRV" "$SRV" 'lgb-zpa-server-grp' \
 PVE0_ID="$(ensure 'application' "$APP" "$APP" 'lgb-pve0' \
   '{"name":"lgb-pve0","description":"SSH/HTTP/HTTPS to lgb-pve0 (10.1.2.20)","enabled":true,"domainNames":["10.1.2.20","lgb-pve0.corp.jetzero.aero"],"tcpPortRange":[{"from":"22","to":"22"},{"from":"80","to":"80"},{"from":"443","to":"443"}],"healthCheckType":"DEFAULT","healthReporting":"ON_ACCESS","bypassType":"NEVER","icmpAccessType":"NONE","segmentGroupId":"'"$SEGGRP_ID"'","serverGroups":[{"id":"'"$SRVGRP_ID"'"}]}')"
 
+# AD/DC services for users (auth, DNS, DFS referrals) - essential-6 port set on
+# the bare domain + the DC. corp.jetzero.aero is needed for the domain-based DFS
+# namespace + DC locator.
+ADSVC_ID="$(ensure 'application' "$APP" "$APP" 'lgb-ad-services' \
+  '{"name":"lgb-ad-services","description":"AD/DC services: auth, DNS, DFS referral (essential ports)","enabled":true,"domainNames":["corp.jetzero.aero","lgb-dc1.corp.jetzero.aero"],"tcpPortRange":[{"from":"53","to":"53"},{"from":"88","to":"88"},{"from":"135","to":"135"},{"from":"389","to":"389"},{"from":"445","to":"445"},{"from":"464","to":"464"}],"udpPortRange":[{"from":"53","to":"53"},{"from":"88","to":"88"},{"from":"389","to":"389"},{"from":"464","to":"464"}],"healthCheckType":"DEFAULT","healthReporting":"ON_ACCESS","bypassType":"NEVER","icmpAccessType":"NONE","segmentGroupId":"'"$SEGGRP_ID"'","serverGroups":[{"id":"'"$SRVGRP_ID"'"}]}')"
+
+# Wildcard SMB for file/DFS access - any corp file server target on 445 only.
+# Covers DFS referral targets (lgb-nas0 etc.) regardless of IP churn / new servers.
+SMB_ID="$(ensure 'application' "$APP" "$APP" 'lgb-corp-smb' \
+  '{"name":"lgb-corp-smb","description":"SMB (445) to any corp.jetzero.aero file server (DFS targets)","enabled":true,"domainNames":["*.corp.jetzero.aero"],"tcpPortRange":[{"from":"445","to":"445"}],"healthCheckType":"DEFAULT","healthReporting":"ON_ACCESS","bypassType":"NEVER","icmpAccessType":"NONE","segmentGroupId":"'"$SEGGRP_ID"'","serverGroups":[{"id":"'"$SRVGRP_ID"'"}]}')"
+
 RULE_ID="$(ensure 'accessRule' "$POL_LIST" "$POL_CREATE" 'Allow lgb-zpa-segment-grp' \
   '{"name":"Allow lgb-zpa-segment-grp","action":"ALLOW","operator":"AND","conditions":[{"operands":[{"objectType":"APP_GROUP","lhs":"id","rhs":"'"$SEGGRP_ID"'"}]}]}')"
 
@@ -65,4 +76,6 @@ echo "=== lgb ZPA app config ==="
 echo "  segmentGroup lgb-zpa-segment-grp = $SEGGRP_ID"
 echo "  serverGroup  lgb-zpa-server-grp  = $SRVGRP_ID"
 echo "  application  lgb-pve0            = $PVE0_ID"
+echo "  application  lgb-ad-services     = $ADSVC_ID"
+echo "  application  lgb-corp-smb        = $SMB_ID"
 echo "  accessRule   Allow lgb-...       = $RULE_ID"
