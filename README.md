@@ -72,10 +72,12 @@ See [`docs/deployment.md`](docs/deployment.md) for the full runbook and
 - [x] **Provisioning key** `aws-gc-app-con-grp-key` (id `2468`, maxUsage 1000) minted → SSM `/zscaler/zpa/provisioning-key`
 - [x] **ASG scaled to 2** (rolling-updated to launch-template v2 after the enrollment fix)
 - [x] **Both connectors enrolled & healthy** — `ZPN_STATUS_AUTHENTICATED` in `aws-gc-app-con-grp`: `172.32.10.200` (1a), `172.32.10.215` (1b), v26.53.4
-- [ ] Define application segments + server groups + access policies for user apps (phase 2b)
+- [x] **Phase 2b started** — `gc.jetzero.aero` published via aws-gc connectors: `aws-gc-zpa-server-grp` + segment group, `*.gc.jetzero.aero` wildcard + `utility-win0` RDP (3389) app segments, ALLOW access rule, and the `tc_prod_sg` 3389 firewall rule. End-to-end RDP path verified. See [app-segments.md](docs/app-segments.md).
+- [ ] Publish remaining apps (e.g. lgb `10.1.0.0/16` by subnet) + decide on the `AWS`/`Sophos` placeholder cleanup
 
-> ✅ **App Connectors are live and authenticated to the Zscaler Gov cloud.**
-> (One enrollment bug fixed along the way — the provisioning key must be readable
-> by the `zscaler` user, not `root:root 0600`; see [decisions.md](docs/decisions.md) D9.)
-> Remaining work is **phase 2b**: defining the internal apps users will reach
-> (application segments, server groups, access policy).
+> ✅ **App Connectors live; first apps published.** Users can reach
+> `gc.jetzero.aero` (incl. RDP to `utility-win0`) through the aws-gc connectors.
+> Publishing strategy: each environment by its own scope bound to its local
+> connectors (aws-lz/lgb by subnet, gc by domain) — see
+> [app-segments.md](docs/app-segments.md). Enrollment bug fixed earlier: the
+> provisioning key must be readable by the `zscaler` user (decision D9).

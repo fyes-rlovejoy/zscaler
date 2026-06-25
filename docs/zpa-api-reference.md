@@ -28,6 +28,14 @@ archive/scrape cleanly).
 | GET | `/mgmtconfig/`**`v2`**`/admin/customers/{cid}/enrollmentCert` | ⚠️ **v2 only** — v1 returns `{"exception":"No handler found"}` |
 | GET | `/mgmtconfig/v1/admin/customers/{cid}/visible/versionProfiles` | Upgrade/version profiles |
 | POST | `/mgmtconfig/v1/admin/customers/{cid}/associationType/CONNECTOR_GRP/provisioningKey` | Mint App Connector provisioning key |
+| GET/POST | `/mgmtconfig/v1/admin/customers/{cid}/segmentGroup` | List / create segment groups |
+| GET/POST/DELETE | `/mgmtconfig/v1/admin/customers/{cid}/serverGroup[/{id}]` | Server groups (set `dynamicDiscovery`, bind `appConnectorGroups`) |
+| GET/POST/DELETE | `/mgmtconfig/v1/admin/customers/{cid}/application[/{id}]` | Application segments (`domainNames`, `tcpPortRange`/`udpPortRange` as `[{from,to}]`, `segmentGroupId`, `serverGroups`) |
+| GET | `/mgmtconfig/v1/admin/customers/{cid}/policySet/rules/policyType/ACCESS_POLICY` | List access rules |
+| POST | `/mgmtconfig/v1/admin/customers/{cid}/policySet/{policySetId}/rule` | Create access rule (e.g. `{action:ALLOW, conditions:[{operands:[{objectType:APP_GROUP, lhs:id, rhs:<segmentGroupId>}]}]}`) — ACCESS policy set = `72058199628316677` |
+| GET/POST/DELETE | `/mgmtconfig/v1/admin/customers/{cid}/idp` (v2), `.../samlAttribute` (note: not on this Gov tenant), `/userconfig/v1/customers/{cid}/scimgroup/idpId/{idpId}` | IdP / SAML / SCIM (no SCIM enabled here) |
+
+Provisioning helper for the app config: `scripts/zpa-provision-gc-apps.sh` (idempotent — find-by-name then create). App segments/groups documented in [app-segments.md](app-segments.md).
 
 ### Response/error conventions
 - List endpoints: `{ "list": [...], "totalCount": "N" }` (pagination: `?page=1&pagesize=100`).
