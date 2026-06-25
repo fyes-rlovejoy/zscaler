@@ -63,6 +63,14 @@ See [`docs/deployment.md`](docs/deployment.md) for the full runbook and
 ## Status
 
 - [x] Network discovery
-- [x] CloudFormation: subnets + ASG/launch template
+- [x] CloudFormation written + validated (subnets + ASG/launch template)
+- [x] **Network stack deployed** (`zpa-network`): subnets `subnet-085c421a7cb00abb2` (1a), `subnet-0dbc8b2a2eea9086e` (1b)
+- [ ] **AWS Marketplace subscription** accepted for the App Connector AMI — *blocks the connector stack* (see [deployment.md](docs/deployment.md) step 0)
+- [ ] Connector stack deployed (`zpa-app-connectors`)
 - [ ] ZPA provisioning key created & stored in SSM (phase 2 — Zscaler API)
 - [ ] Connectors enrolled and serving apps
+
+> ⚠️ **Blocker:** the first connector-stack deploy on 2026-06-25 failed because
+> the Marketplace product (`i7l2axzva5jclhk90srmtkgv`) isn't subscribed in this
+> account. Accept the terms (deployment.md step 0), then re-run
+> `./scripts/deploy.sh connectors`.
