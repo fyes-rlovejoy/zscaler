@@ -11,12 +11,30 @@
 2. **An App Connector group** the connectors belong to (region/latency aware).
 3. **Application segments + access policies** so users can reach internal apps.
 
+## Credentials (stored 2026-06-25)
+
+The Zscaler tenant is on the **Gov cloud** (admin login `zpagov.us`). Credentials
+live in SSM Parameter Store, `/zscaler/zpa/`:
+
+| Parameter | Type | Notes |
+|-----------|------|-------|
+| `/zscaler/zpa/api/key` | SecureString | ZPA API key (single string) |
+| `/zscaler/zpa/api/customer-id` | String | ZPA customer/tenant ID |
+| `/zscaler/zpa/provisioning-key` | *(to create)* | App Connector enrollment key — minted in this phase |
+
+> ⚠️ The API key was exposed in a terminal session while being stored — **rotate
+> it** in the ZPA portal once phase 2 is validated and re-store the new value.
+
 ## ZPA API basics (to confirm against the tenant)
 
-- **Auth:** OAuth2 client credentials → bearer token. ZPA API base differs by
-  cloud; for ZPA the API host is typically `https://config.private.zscaler.com`
-  (confirm the correct cloud/host for this **GovCloud-aligned** tenant — ZPA Gov
-  may use a different base, e.g. a `.zscalergov.net` cloud).
+- **Cloud/host:** Gov tenant (`zpagov.us`). The ZPA **API base host** for Gov is
+  *not* the commercial `config.private.zscaler.com` — confirm the Gov config
+  host before writing requests.
+- **Auth — OPEN:** legacy ZPA API uses OAuth2 **client_id + client_secret** →
+  `POST {base}/signin` → bearer token, with the customer ID in resource paths. We
+  currently have a **single API key** + customer ID, which doesn't match that
+  two-part scheme — need to confirm whether this is a OneAPI/ZIdentity key, a
+  client_secret (and where the client_id is), or a standalone key.
 - **Key objects:**
   - `App Connector Group` — logical grouping of connectors.
   - `Provisioning Key` (type `CONNECTOR_GRP`) — the enrollment token.
