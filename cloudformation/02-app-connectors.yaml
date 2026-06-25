@@ -29,8 +29,10 @@ Parameters:
 
   AppConnectorAmiId:
     Type: AWS::EC2::Image::Id
-    Description: Zscaler ZPA App Connector AMI (from AWS Marketplace).
-    Default: ami-00814956d4ff7ac6c
+    Description: >-
+      Zscaler ZPA App Connector AMI (AWS Marketplace, product
+      by1wc5269g0048ix2nqvr0362). Default is zpa-connector-el9-2026.05.
+    Default: ami-0205b8fb8ca4d9883
 
   InstanceType:
     Type: String
@@ -42,9 +44,9 @@ Parameters:
 
   RootVolumeSizeGb:
     Type: Number
-    Description: Encrypted gp3 root volume size (GiB). AMI default is 16.
-    Default: 30
-    MinValue: 16
+    Description: Encrypted gp3 root volume size (GiB). The App Connector AMI ships a 64 GiB root; cannot be smaller.
+    Default: 64
+    MinValue: 64
     MaxValue: 200
 
   MinSize:
@@ -178,7 +180,7 @@ Resources:
           HttpEndpoint: enabled
           HttpPutResponseHopLimit: 1
         BlockDeviceMappings:
-          - DeviceName: /dev/sda1
+          - DeviceName: /dev/xvda   # App Connector EL9 AMI root device
             Ebs:
               VolumeSize: !Ref RootVolumeSizeGb
               VolumeType: gp3

@@ -6,27 +6,33 @@ Region: `us-gov-west-1` · Account: `341370882819` (`aws-us-gov`)
 
 - AWS CLI v2 authenticated as a principal that can create CFN/EC2/IAM/SSM
   resources in the account.
-- **AWS Marketplace subscription accepted** for the Zscaler App Connector
-  product (code `i7l2axzva5jclhk90srmtkgv`). See step 0 — this is a hard
-  blocker; the ASG will not create until terms are accepted.
+- **AWS Marketplace subscription accepted** for the **ZPA App Connector**
+  product (code `by1wc5269g0048ix2nqvr0362`, AMI `ami-0205b8fb8ca4d9883`). See
+  step 0 — this is a hard blocker; the ASG will not create until terms are
+  accepted. NB: this is the ZPA App Connector, *not* the ZIA Cloud Connector
+  (`i7l2axzva5jclhk90srmtkgv`, AMI `...pricpa...`) that was mistakenly used in
+  the first attempt.
 - `python3` on the deploy host (used by `deploy.sh` to expand params).
 
 ## 0. Accept the Marketplace subscription (one-time, REQUIRED)
 
-The App Connector AMI (`ami-00814956d4ff7ac6c`) is a public Marketplace image,
-but launching it requires the **account to have accepted the product's terms**.
-Without this the connector stack fails at `AppConnectorAsg` with:
+The ZPA App Connector AMI (`ami-0205b8fb8ca4d9883`, `zpa-connector-el9-2026.05`)
+is a public Marketplace image, but launching it requires the **account to have
+accepted the product's terms**. Without this the connector stack fails at
+`AppConnectorAsg` with:
 
 > _"In order to use this AWS Marketplace product you need to accept terms and
-> subscribe ... marketplace/pp?sku=i7l2axzva5jclhk90srmtkgv"_
+> subscribe ... marketplace/pp?sku=<product-code>"_
 
 This can't be done from the CLI — it's a console/EULA action:
 
-1. In a browser, open the AWS Marketplace listing:
-   `https://aws.amazon.com/marketplace/pp?sku=i7l2axzva5jclhk90srmtkgv`
-   (subscribe using the **commercial account linked to this GovCloud account** —
+1. In a browser, open the AWS Marketplace listing for the **ZPA App Connector**
+   (product `by1wc5269g0048ix2nqvr0362`):
+   `https://aws.amazon.com/marketplace/pp?sku=by1wc5269g0048ix2nqvr0362`
+   Subscribe using the **commercial account linked to this GovCloud account** —
    GovCloud Marketplace entitlements are managed through the paired standard
-   account).
+   account. **Confirm the listing title says ZPA App Connector** (not ZIA Cloud
+   Connector, Private Service Edge, etc.).
 2. Click **Continue to Subscribe** → **Accept Terms**. Wait until the
    subscription shows active.
 3. Confirm the AMI is now launchable, then proceed to step 1 below.
@@ -35,9 +41,13 @@ Verify (the product code is present on the AMI regardless; the gate is the
 *subscription* state, which surfaces only at launch/ASG-create time):
 
 ```bash
-aws ec2 describe-images --region us-gov-west-1 --image-ids ami-00814956d4ff7ac6c \
-  --query 'Images[0].ProductCodes' --output json
+aws ec2 describe-images --region us-gov-west-1 --image-ids ami-0205b8fb8ca4d9883 \
+  --query 'Images[0].{Name:Name,ProductCodes:ProductCodes}' --output json
 ```
+
+> Other ZPA images visible in the account (do **not** use for App Connectors):
+> `zpa-service-edge` (Private Service Edge), `zpa-pcc` (Private Cloud Controller),
+> `zpa-network-connector` (older build). The App Connector is `zpa-connector-el9`.
 
 ## Order of operations
 

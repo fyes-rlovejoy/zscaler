@@ -33,11 +33,17 @@ instances enroll as *new* connectors — stale entries are pruned via the ZPA
 portal/API in phase 2.
 
 ## D5 — Marketplace AMI pinned, IMDSv2, encrypted root
-**Decision:** Pin `ami-00814956d4ff7ac6c` (`zscaler-pricpa v5.0.3`) as a
-parameter; enforce IMDSv2; override the root volume to **encrypted gp3**.
+**Decision:** Pin `ami-0205b8fb8ca4d9883` (`zpa-connector-el9-2026.05`,
+Marketplace product `by1wc5269g0048ix2nqvr0362`) as a parameter; enforce IMDSv2;
+override the root volume (`/dev/xvda`, 64 GiB) to **encrypted gp3**.
 **Why:** Reproducible deploys; the raw Marketplace AMI ships an unencrypted
-`gp2` root, which we don't want in GovCloud. AMI is a parameter so version
-upgrades are a one-line change + rolling update.
+root, which we don't want in GovCloud. AMI is a parameter so version upgrades
+are a one-line change + rolling update.
+**Correction (2026-06-25):** the first attempt used `ami-00814956d4ff7ac6c`
+(`...pricpa...`, product `i7l2axzva5jclhk90srmtkgv`) — that is the **ZIA Cloud
+Connector**, not the ZPA App Connector. Re-discovered the correct ZPA App
+Connector AMI and switched. Root device also changed `/dev/sda1` → `/dev/xvda`
+and min size 16 → 64 GiB to match the EL9 image.
 
 ## D6 — Provisioning key via SSM SecureString, fetched at boot
 **Decision:** The ZPA provisioning key lives in SSM Parameter Store

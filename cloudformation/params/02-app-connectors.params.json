@@ -1,8 +1,8 @@
 [
   { "ParameterKey": "NetworkStackName", "ParameterValue": "zpa-network" },
-  { "ParameterKey": "AppConnectorAmiId", "ParameterValue": "ami-00814956d4ff7ac6c" },
+  { "ParameterKey": "AppConnectorAmiId", "ParameterValue": "ami-0205b8fb8ca4d9883" },
   { "ParameterKey": "InstanceType", "ParameterValue": "m5.large" },
-  { "ParameterKey": "RootVolumeSizeGb", "ParameterValue": "30" },
+  { "ParameterKey": "RootVolumeSizeGb", "ParameterValue": "64" },
   { "ParameterKey": "MinSize", "ParameterValue": "2" },
   { "ParameterKey": "MaxSize", "ParameterValue": "4" },
   { "ParameterKey": "DesiredCapacity", "ParameterValue": "2" },

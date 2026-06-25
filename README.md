@@ -44,7 +44,7 @@ docs/
 - **Region:** `us-gov-west-1` (AZs `us-gov-west-1a`, `us-gov-west-1b`)
 - **VPC:** `general-vpc` `vpc-09b4dbbf955d7862f` (`172.32.0.0/20`)
 - **Private route table:** `rtb-07aa95919af0e668f` (`0.0.0.0/0` → `nat-0830a9934e632a10a`)
-- **App Connector AMI:** `ami-00814956d4ff7ac6c` (`zscaler-pricpa v5.0.3`, x86_64)
+- **App Connector AMI:** `ami-0205b8fb8ca4d9883` (`zpa-connector-el9-2026.05`, x86_64, Marketplace product `by1wc5269g0048ix2nqvr0362`)
 
 ## Quick start
 
@@ -65,12 +65,13 @@ See [`docs/deployment.md`](docs/deployment.md) for the full runbook and
 - [x] Network discovery
 - [x] CloudFormation written + validated (subnets + ASG/launch template)
 - [x] **Network stack deployed** (`zpa-network`): subnets `subnet-085c421a7cb00abb2` (1a), `subnet-0dbc8b2a2eea9086e` (1b)
-- [ ] **AWS Marketplace subscription** accepted for the App Connector AMI — *blocks the connector stack* (see [deployment.md](docs/deployment.md) step 0)
+- [ ] **AWS Marketplace subscription** accepted for the **ZPA App Connector** AMI — *blocks the connector stack* (see [deployment.md](docs/deployment.md) step 0)
 - [ ] Connector stack deployed (`zpa-app-connectors`)
 - [ ] ZPA provisioning key created & stored in SSM (phase 2 — Zscaler API)
 - [ ] Connectors enrolled and serving apps
 
-> ⚠️ **Blocker:** the first connector-stack deploy on 2026-06-25 failed because
-> the Marketplace product (`i7l2axzva5jclhk90srmtkgv`) isn't subscribed in this
-> account. Accept the terms (deployment.md step 0), then re-run
-> `./scripts/deploy.sh connectors`.
+> ⚠️ **Blocker:** the connector stack needs the **ZPA App Connector** Marketplace
+> product (`by1wc5269g0048ix2nqvr0362`, AMI `ami-0205b8fb8ca4d9883`) subscribed in
+> this account. (The first attempt mistakenly targeted a ZIA Cloud Connector AMI,
+> `i7l2axzva5jclhk90srmtkgv` — corrected.) Accept the terms (deployment.md step 0),
+> then run `./scripts/deploy.sh connectors`.
