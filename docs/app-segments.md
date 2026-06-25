@@ -73,14 +73,14 @@ Structure is now in place so enforcing admin-only later is a **one-line change t
 
 | Segment group | ID | Apps | Access rule (today) | Later |
 |---------------|----|------|---------------------|-------|
-| `lgb-zpa-segment-grp` (user) | `72058199628316751` | `lgb-pve0`, `lgb-ad-services`, `lgb-corp-smb`, `lgb-jz-netbios-test` | `Allow lgb-zpa-segment-grp` (`...754`) — all auth | keep (users) |
-| `lgb-admin-zpa-segment-grp` (admin) | `72058199628316758` | `LGB-DFS1-RDP` (3389) | `Allow lgb-admin-zpa-segment-grp` (`72058199628316759`) — all auth | **add SAML groups = admin Entra group** to rule `...759` |
+| `lgb-zpa-segment-grp` (user) | `72058199628316751` | `lgb-ad-services`, `lgb-corp-smb`, `lgb-jz-netbios-test` | `Allow lgb-zpa-segment-grp` (`...754`) — all auth | keep (users) |
+| `lgb-admin-zpa-segment-grp` (admin) | `72058199628316758` | `LGB-DFS1-RDP` (3389), `lgb-pve0` (22/80/443) | `Allow lgb-admin-zpa-segment-grp` (`72058199628316759`) — all auth | **add SAML groups = admin Entra group** to rule `...759` |
 
 To enforce admin-only later, add an identity operand to rule `72058199628316759`:
 `{"objectType":"SAML","lhs":"72058199628316728","rhs":"<admin Entra group Object ID>"}`.
 
 Notes:
-- `lgb-pve0` stays a **user** app per its original framing — move it into `lgb-admin-zpa-segment-grp` if you decide it's admin.
+- `lgb-pve0` (Proxmox mgmt) is now in the **admin** group alongside `LGB-DFS1-RDP`.
 - Moving `LGB-DFS1-RDP` out left the default **`Internal Application Group`** (`72058199628316676`) **empty**. Its rule `Allow Internal Application Group` (`72058199628316678`) still grants `aws-lz-zpa-segment-grp` (`703`), so don't delete the group/rule without first trimming that operand. Candidate for a later tidy-up.
 
 **Defined by IP and FQDN on purpose:** the IP (`10.1.2.20`) works immediately; the
