@@ -68,8 +68,20 @@ group was created for these apps.
 - **DNS search suffix** (for non-domain-joined clients) is a **Zscaler Client Connector** App-Profile setting (ZCC/Mobile portal), *not* a ZPA-API/app-segment setting.
 - **NetBIOS `\\jz\`:** ZPA has no NetBIOS/WINS path; the `jz` single-label segment is **best-effort** (suffixing `jz` yields `jz.corp.jetzero.aero`, not a host). Standardize users on `\\corp.jetzero.aero\…`.
 
-### Access gating — paused (no users yet)
-There are **no users provisioned** in the tenant yet, so "all authenticated users" exposes nothing today. Admin gating is **deferred**: `LGB-DFS1-RDP` (admin) is left in `Internal Application Group` for now; before provisioning users, re-home admin apps into an admin segment group and gate it to the Entra admin group (see below). `lgb-pve0` is treated as a **user** app per its original framing — reclassify to admin if desired.
+### Admin vs user structure (gating staged, not yet enforced)
+Structure is now in place so enforcing admin-only later is a **one-line change to a single rule** (add a SAML `groups` condition). There are **no users provisioned** yet, so the open rules expose nothing today.
+
+| Segment group | ID | Apps | Access rule (today) | Later |
+|---------------|----|------|---------------------|-------|
+| `lgb-zpa-segment-grp` (user) | `72058199628316751` | `lgb-pve0`, `lgb-ad-services`, `lgb-corp-smb`, `lgb-jz-netbios-test` | `Allow lgb-zpa-segment-grp` (`...754`) — all auth | keep (users) |
+| `lgb-admin-zpa-segment-grp` (admin) | `72058199628316758` | `LGB-DFS1-RDP` (3389) | `Allow lgb-admin-zpa-segment-grp` (`72058199628316759`) — all auth | **add SAML groups = admin Entra group** to rule `...759` |
+
+To enforce admin-only later, add an identity operand to rule `72058199628316759`:
+`{"objectType":"SAML","lhs":"72058199628316728","rhs":"<admin Entra group Object ID>"}`.
+
+Notes:
+- `lgb-pve0` stays a **user** app per its original framing — move it into `lgb-admin-zpa-segment-grp` if you decide it's admin.
+- Moving `LGB-DFS1-RDP` out left the default **`Internal Application Group`** (`72058199628316676`) **empty**. Its rule `Allow Internal Application Group` (`72058199628316678`) still grants `aws-lz-zpa-segment-grp` (`703`), so don't delete the group/rule without first trimming that operand. Candidate for a later tidy-up.
 
 **Defined by IP and FQDN on purpose:** the IP (`10.1.2.20`) works immediately; the
 FQDN (`lgb-pve0.corp.jetzero.aero`) starts working once it's registered in the lgb
