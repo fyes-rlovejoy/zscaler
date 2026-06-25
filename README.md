@@ -65,13 +65,12 @@ See [`docs/deployment.md`](docs/deployment.md) for the full runbook and
 - [x] Network discovery
 - [x] CloudFormation written + validated (subnets + ASG/launch template)
 - [x] **Network stack deployed** (`zpa-network`): subnets `subnet-085c421a7cb00abb2` (1a), `subnet-0dbc8b2a2eea9086e` (1b)
-- [ ] **AWS Marketplace subscription** accepted for the **ZPA App Connector** AMI — *blocks the connector stack* (see [deployment.md](docs/deployment.md) step 0)
-- [ ] Connector stack deployed (`zpa-app-connectors`)
+- [x] **ZPA App Connector Marketplace subscription** active (`by1wc5269g0048ix2nqvr0362`, AMI `ami-0205b8fb8ca4d9883`)
+- [x] **Connector stack deployed** (`zpa-app-connectors`) — standing by at **desired=0** (no provisioning key yet). ASG `zpa-app-connectors-zpa-appconnectors`, SG `sg-008f102ef0043d5f1`, LT `lt-09908ff726d3505fa`
 - [ ] ZPA provisioning key created & stored in SSM (phase 2 — Zscaler API)
-- [ ] Connectors enrolled and serving apps
+- [ ] Scale ASG to 2 and confirm connectors enroll & serve apps
 
-> ⚠️ **Blocker:** the connector stack needs the **ZPA App Connector** Marketplace
-> product (`by1wc5269g0048ix2nqvr0362`, AMI `ami-0205b8fb8ca4d9883`) subscribed in
-> this account. (The first attempt mistakenly targeted a ZIA Cloud Connector AMI,
-> `i7l2axzva5jclhk90srmtkgv` — corrected.) Accept the terms (deployment.md step 0),
-> then run `./scripts/deploy.sh connectors`.
+> **Next:** once the provisioning key is in SSM (`/zscaler/zpa/provisioning-key`),
+> bring the connectors up with `./scripts/deploy.sh connectors` (params set
+> desired=2). The stack is currently deployed at desired=0 so nothing bills until
+> the connectors can actually enroll.
