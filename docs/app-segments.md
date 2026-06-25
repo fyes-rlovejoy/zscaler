@@ -64,6 +64,7 @@ group was created for these apps.
 
 ### AD / DFS / SMB design notes
 - **DFS is a domain-based namespace** (`\\corp.jetzero.aero\…`). The client gets a referral from a DC → namespace server (`lgb-dfs1`) → file target (`lgb-nas0`, `10.1.10.18` *(changes)*). So we publish: `corp.jetzero.aero` + the DC (`lgb-ad-services`) and **all** corp file targets via the **`*.corp.jetzero.aero`:445 wildcard** (`lgb-corp-smb`) — IP-churn-proof, SMB-only (not VPN).
+- **Most-specific-match shadowing gotcha (real one we hit):** the DFS referral for `\\corp.jetzero.aero\share` is FQDN (`\\LGB-DFS1.CORP.JETZERO.AERO\Share`), so the namespace server is `lgb-dfs1`. But `lgb-dfs1` already had an **exact-FQDN** segment (`LGB-DFS1-RDP`, 3389 only); ZPA matches the most-specific domain segment, so SMB **445** to `lgb-dfs1` was shadowed out (the `*.corp:445` wildcard is less specific and didn't apply). `lgb-nas0` worked only because it had no exact segment. Fix: an **exact** `lgb-dfs1-smb` (`...761`, `lgb-dfs1.corp.jetzero.aero:445`) in the user group. **Lesson:** if an FQDN has any exact segment, every port you need for that FQDN must be on an exact segment too — the wildcard won't backfill it.
 - **DFS short-name referral gotcha:** referrals currently return `\\lgb-nas0\…` (no domain). Fix on the AD side by re-adding the DFS **folder targets** as FQDNs (`\\lgb-nas0.corp.jetzero.aero\…`) and removing the short ones — **no namespace recreation needed**. On **domain-joined** clients the `corp.jetzero.aero` DNS suffix is already appended, so short referrals often resolve to the FQDN and hit the wildcard anyway.
 - **DNS search suffix** (for non-domain-joined clients) is a **Zscaler Client Connector** App-Profile setting (ZCC/Mobile portal), *not* a ZPA-API/app-segment setting.
 - **NetBIOS `\\jz\`:** ZPA has no NetBIOS/WINS path; the `jz` single-label segment is **best-effort** (suffixing `jz` yields `jz.corp.jetzero.aero`, not a host). Standardize users on `\\corp.jetzero.aero\…`.
@@ -73,7 +74,7 @@ Structure is now in place so enforcing admin-only later is a **one-line change t
 
 | Segment group | ID | Apps | Access rule (today) | Later |
 |---------------|----|------|---------------------|-------|
-| `lgb-zpa-segment-grp` (user) | `72058199628316751` | `lgb-ad-services`, `lgb-corp-smb`, `lgb-jz-netbios-test` | `Allow lgb-zpa-segment-grp` (`...754`) — all auth | keep (users) |
+| `lgb-zpa-segment-grp` (user) | `72058199628316751` | `lgb-ad-services`, `lgb-corp-smb`, `lgb-dfs1-smb`, `lgb-jz-netbios-test` | `Allow lgb-zpa-segment-grp` (`...754`) — all auth | keep (users) |
 | `lgb-admin-zpa-segment-grp` (admin) | `72058199628316758` | `LGB-DFS1-RDP` (3389), `lgb-pve0` (22/80/443), `lgb-dc1-rdp` (3389, `lgb-dc1.corp.jetzero.aero`/`10.1.130.10`) | `Allow lgb-admin-zpa-segment-grp` (`72058199628316759`) — all auth | **add SAML groups = admin Entra group** to rule `...759` |
 
 To enforce admin-only later, add an identity operand to rule `72058199628316759`:
