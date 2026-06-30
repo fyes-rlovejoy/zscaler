@@ -121,10 +121,10 @@ all-ports wildcard was retired). All bound to `aws-gc-zpa-server-grp` (`...747`)
 |---------------|----|-------------|---------|-------|--------------------|
 | `gc-admin-zpa-segment-grp` | `...762` | `gc-admin-rdp-ssh` (`...765`) | `172.30.0.0/16` + `172.32.0.0/20` — **by IP** | TCP 22, 3389 | `Allow gc-admin-...` (`...768`) |
 | | | `gc-admin-rdp-ssh-byname` (`...770`) | `*.gc.jetzero.aero` — **by name** | TCP 22, 3389 | (same rule) |
+| | | `aws-gc-utility-win0-rdp` (`...749`) | `utility-win0.gc.jetzero.aero` (**admin-only**) | TCP 3389 | (same rule) |
 | `gc-engineers-zpa-segment-grp` | `...763` | `gc-license-servers` (`...766`) | `tc-glo` / `tc-lic` / `jz-lic`.gc.jetzero.aero | **all** TCP+UDP | `Allow gc-engineers-...` (`...769`) |
 | | | `gc-teamcenter` (`...767`) | `prd` / `sandbox` / `dev1` / `acp`.gc.jetzero.aero | TCP 80, 443, 3000, 4544, 8080 | (same rule) |
-| `jz-all-users-zpa-segment-grp` | `...764` | `aws-gc-utility-win0-rdp` (`...749`) | `utility-win0.gc.jetzero.aero` | TCP 3389 | `Allow jz-all-users-...` (`...771`) |
-| | | *(web / ctb ALBs — pending Tier-4 ports)* | | TBD | |
+| `jz-all-users-zpa-segment-grp` | `...764` | *(empty — web / ctb ALBs pending Tier-4 ports)* | | TBD | `Allow jz-all-users-...` (`...771`) |
 
 **Most-specific-match (by design):** gc-admin **by-name** RDP/SSH to the engineer
 hosts (prd/sandbox/dev1/acp, tc-glo/tc-lic/jz-lic) and utility-win0 is shadowed by
