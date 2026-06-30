@@ -102,8 +102,8 @@ attribute `72058199628316728` (no SCIM). Rule condition = `(APP_GROUP)` **AND**
 | Rule (segment group) | Entra group (Object ID) | Status |
 |----------------------|-------------------------|--------|
 | engineers (`gc-engineers-zpa-segment-grp`) | `NX_TC_Security` (`043c783a-9c23-4aac-8ddb-daf1a16a7d9b`) | ✅ gated 2026-06-30 |
-| gc-admin (`gc-admin-zpa-segment-grp`) | `zpa-gc-admin` | ⏳ pending Object ID |
-| lgb-admin (`lgb-admin-zpa-segment-grp`) | `zpa-lgb-admin` | ⏳ pending Object ID |
+| gc-admin (`gc-admin-zpa-segment-grp`) | `zpa-gc-admin` (`a1fac989-d432-41b2-a5a1-155e18b3ad1f`) | ✅ gated 2026-06-30 |
+| lgb-admin (`lgb-admin-zpa-segment-grp`) | `zpa-lgb-admin` (`96e38cc3-e263-4edc-b99f-d26245bd9577`) | ✅ gated 2026-06-30 |
 | jz-all-users + lgb users (file/AD/DFS) | — (open / all authenticated) | ✅ open by design |
 
 Entra side: set the Zscaler ZPA app's **groups claim** to "Groups assigned to the
