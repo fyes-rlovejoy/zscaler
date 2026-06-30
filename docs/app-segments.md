@@ -4,24 +4,15 @@ How internal apps are published to users through the App Connectors. Created via
 `scripts/zpa-provision-gc-apps.sh` (idempotent) against the Gov tenant on
 2026-06-25.
 
-## aws-gc — gc.jetzero.aero (this build)
+## aws-gc — gc.jetzero.aero
 
-All `gc.jetzero.aero` resources live in the aws-gc environment, so they're
-published **by domain** through the `aws-gc-app-con-grp` connectors. Single
-environment ⇒ no multi-network ambiguity.
-
-| Object | Name | ID | Detail |
-|--------|------|----|--------|
-| Segment group | `aws-gc-zpa-segment-grp` | `72058199628316746` | groups the gc app segments |
-| Server group | `aws-gc-zpa-server-grp` | `72058199628316747` | `dynamicDiscovery=true`, bound to `aws-gc-app-con-grp` (`72058199628316742`) |
-| App segment | `aws-gc-domain` | `72058199628316748` | `*.gc.jetzero.aero`, TCP+UDP 1–65535 — domain-wide reach ("DNS") |
-| App segment | `aws-gc-utility-win0-rdp` | `72058199628316749` | `utility-win0.gc.jetzero.aero`, TCP 3389 — RDP |
-| Access rule | `Allow aws-gc-zpa-segment-grp` | `72058199628316750` | ALLOW the segment group to all authenticated users (policy set `72058199628316677`) |
-
-The specific `utility-win0` segment coexists with the `*.gc.jetzero.aero`
-wildcard — ZPA matches most-specific first, so RDP gets its own segment (tighter
-port + independent policy/visibility) while everything else in the domain is
-covered by the wildcard.
+All gc apps run on the `aws-gc-app-con-grp` connectors via server group
+`aws-gc-zpa-server-grp` (`72058199628316747`, dynamic). Originally published with
+a broad `*.gc.jetzero.aero` all-ports wildcard; **restructured 2026-06-30 to
+FQDN-based, per access group** (see "AWS GovCloud servers" below for the full
+group model). The old `aws-gc-zpa-segment-grp` + `aws-gc-domain` wildcard were
+retired; `aws-gc-utility-win0-rdp` (`utility-win0.gc.jetzero.aero:3389`) moved to
+the `jz-all-users` group.
 
 ### DNS
 No ZPA-side DNS object is needed: the App Connectors resolve `gc.jetzero.aero`
@@ -115,15 +106,23 @@ application" to avoid the >150-group overage truncation.
 ## AWS GovCloud servers — gc-admin / engineers / jz-all-users (2026-06-30)
 
 User-group-based access to GovCloud EC2 (general-vpc + TC VPC, reached via the
-aws-gc connectors over TGW). Targets published **by IP** for now; FQDNs can be
-added (`name.gc.jetzero.aero`). All bound to `aws-gc-zpa-server-grp` (`...747`).
+aws-gc connectors over TGW). **FQDN-based** so name access (`prd` /
+`prd.gc.jetzero.aero`) maps to the right group (restructure 2026-06-30; the broad
+all-ports wildcard was retired). All bound to `aws-gc-zpa-server-grp` (`...747`).
 
 | Segment group | ID | App segment | Targets | Ports | Access rule (open) |
 |---------------|----|-------------|---------|-------|--------------------|
-| `gc-admin-zpa-segment-grp` | `...762` | `gc-admin-rdp-ssh` (`...765`) | `172.30.0.0/16` + `172.32.0.0/20` (all subnet servers) | TCP **22, 3389** | `Allow gc-admin-...` (`...768`) |
-| `gc-engineers-zpa-segment-grp` | `...763` | `gc-license-servers` (`...766`) | TC-GLO `172.30.1.122`, TC-LIC `172.30.1.60`, jz-lic `172.30.1.62` | **all** TCP+UDP | `Allow gc-engineers-...` (`...769`) |
-| | | `gc-teamcenter` (`...767`) | PRD `172.30.1.108`, Sandbox `172.30.1.72`, Dev1 `172.30.1.55`, ACP `172.30.5.129` | TCP 80, 443, 3000, 4544, 8080 | (same rule) |
-| `jz-all-users-zpa-segment-grp` | `...764` | *(pending Tier-4 ports)* | web servers, ctb internal ALBs, misc | TBD | pending |
+| `gc-admin-zpa-segment-grp` | `...762` | `gc-admin-rdp-ssh` (`...765`) | `172.30.0.0/16` + `172.32.0.0/20` — **by IP** | TCP 22, 3389 | `Allow gc-admin-...` (`...768`) |
+| | | `gc-admin-rdp-ssh-byname` (`...770`) | `*.gc.jetzero.aero` — **by name** | TCP 22, 3389 | (same rule) |
+| `gc-engineers-zpa-segment-grp` | `...763` | `gc-license-servers` (`...766`) | `tc-glo` / `tc-lic` / `jz-lic`.gc.jetzero.aero | **all** TCP+UDP | `Allow gc-engineers-...` (`...769`) |
+| | | `gc-teamcenter` (`...767`) | `prd` / `sandbox` / `dev1` / `acp`.gc.jetzero.aero | TCP 80, 443, 3000, 4544, 8080 | (same rule) |
+| `jz-all-users-zpa-segment-grp` | `...764` | `aws-gc-utility-win0-rdp` (`...749`) | `utility-win0.gc.jetzero.aero` | TCP 3389 | `Allow jz-all-users-...` (`...771`) |
+| | | *(web / ctb ALBs — pending Tier-4 ports)* | | TBD | |
+
+**Most-specific-match (by design):** gc-admin **by-name** RDP/SSH to the engineer
+hosts (prd/sandbox/dev1/acp, tc-glo/tc-lic/jz-lic) and utility-win0 is shadowed by
+their exact FQDN segments → admins reach those **by IP** (the CIDR segment); every
+other gc host works by name via the `*.gc:22,3389` wildcard.
 
 **Two hard dependencies before any of this passes traffic:**
 1. **Target security groups** must allow the connector subnets (`172.32.10.192/28`, `172.32.10.208/28`) on the app ports — only `utility-win0`/`tc_prod_sg` (3389) is done so far. The rest need SG rules per target/port (large for the gc-admin all-subnets case).
