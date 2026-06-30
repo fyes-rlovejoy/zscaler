@@ -125,7 +125,7 @@ their exact FQDN segments → admins reach those **by IP** (the CIDR segment); e
 other gc host works by name via the `*.gc:22,3389` wildcard.
 
 **Two hard dependencies before any of this passes traffic:**
-1. **Target security groups** must allow the connector subnets (`172.32.10.192/28`, `172.32.10.208/28`) on the app ports — only `utility-win0`/`tc_prod_sg` (3389) is done so far. The rest need SG rules per target/port (large for the gc-admin all-subnets case).
+1. **Target security groups** must allow the connector subnets (`172.32.10.192/28`, `172.32.10.208/28`) on the app ports. The TC-VPC server SGs are **manual (not CloudFormation)** so they're edited directly (drift-free). Done for the engineer servers (2026-06-30): `tc_prod_sg` (PRD/utility-win0) + `tc_test_sg` (ACP/Dev1/Sandbox) = TCP 80/443/3000/4544/8080/3389; `tc_license_sg` (TC-GLO/TC-LIC/jz-lic) = all TCP+UDP. Still pending: gc-admin RDP/SSH to the other ~23 servers, and the general-vpc web servers whose SGs **are** CFN-managed (stacks `kol-server`, `awg-server`, `simplerisk`, `boomi-atom-*` — not in this repo → update there).
 2. **Group gating:** the three rules are **open (all-auth)** today; restricting to the `gc-admin` / `engineers` / `jz-all-users` Entra groups needs each group's **Object ID** added as a `SAML` condition (attr `...728`). No users provisioned yet, so open exposes nothing for now.
 
 Pending Tier-4 (ports TBD): Cadenas, capital-essentials, SyndeiaCloudWithRLM,
