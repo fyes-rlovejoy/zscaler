@@ -82,6 +82,7 @@ To enforce admin-only later, add an identity operand to rule `72058199628316759`
 
 Notes:
 - `lgb-pve0` (Proxmox mgmt) is now in the **admin** group alongside `LGB-DFS1-RDP`.
+- **`LGB-DFS1-RDP` fix (2026-06-30):** it was bound to the **static** `lgb-dcs-grp`, whose only server is `lgb-dc1` (`10.1.130.10`) — so RDP to `lgb-dfs1` was actually landing on the **DC**. Rebound to the dynamic `lgb-zpa-server-grp` and added the correct IP **`10.1.130.108`** (`lgb-dfs1`'s real address) to its domains. `lgb-dcs-grp` (`72058199628316733`) + server object `lgb-dc1` (`...734`, `10.1.130.10`) are now **unused** — candidate cleanup (kept in case the lgb team wants a DC static group).
 - Moving `LGB-DFS1-RDP` out left the default **`Internal Application Group`** (`72058199628316676`) **empty**. Its rule `Allow Internal Application Group` (`72058199628316678`) still grants `aws-lz-zpa-segment-grp` (`703`), so don't delete the group/rule without first trimming that operand. Candidate for a later tidy-up.
 
 **Defined by IP and FQDN on purpose:** the IP (`10.1.2.20`) works immediately; the
