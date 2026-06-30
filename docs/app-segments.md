@@ -93,15 +93,22 @@ AD DNS (`lgb-dc1` = `10.1.130.10`) — no rework needed.
 > Entra group-based policy (SAML `groups` claim, attr `72058199628316728`) and
 > re-gate this rule — see "Admin vs user access" below.
 
-## Admin vs user access (not yet wired)
+## Access gating — Entra groups
 
-Pattern available for later: broad access for admins, specific apps for users.
-The `Microsoft` USER IdP (`72058199628316717`) already emits a SAML **groups**
-claim (attribute `72058199628316728`) — so group-scoped access rules are possible
-**without SCIM**. To enable, supply the admin Entra group's claim value (Object ID
-by default, or name) and we add a `SAML` condition to the relevant access rule(s).
-Entra side: set the Zscaler app's groups claim to "Groups assigned to the
-application" to avoid the >150-group overage truncation.
+Group-scoped via the `Microsoft` USER IdP (`72058199628316717`) **groups** SAML
+attribute `72058199628316728` (no SCIM). Rule condition = `(APP_GROUP)` **AND**
+`{objectType:SAML, lhs:72058199628316728, rhs:<group Object ID/GUID>}`.
+
+| Rule (segment group) | Entra group (Object ID) | Status |
+|----------------------|-------------------------|--------|
+| engineers (`gc-engineers-zpa-segment-grp`) | `NX_TC_Security` (`043c783a-9c23-4aac-8ddb-daf1a16a7d9b`) | ✅ gated 2026-06-30 |
+| gc-admin (`gc-admin-zpa-segment-grp`) | `zpa-gc-admin` | ⏳ pending Object ID |
+| lgb-admin (`lgb-admin-zpa-segment-grp`) | `zpa-lgb-admin` | ⏳ pending Object ID |
+| jz-all-users + lgb users (file/AD/DFS) | — (open / all authenticated) | ✅ open by design |
+
+Entra side: set the Zscaler ZPA app's **groups claim** to "Groups assigned to the
+application" (avoids the >150-group overage) and **assign** these groups + the
+general user population to the app (app assignment = who can use ZPA at all).
 
 ## AWS GovCloud servers — gc-admin / engineers / jz-all-users (2026-06-30)
 
