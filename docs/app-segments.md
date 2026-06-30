@@ -112,6 +112,27 @@ by default, or name) and we add a `SAML` condition to the relevant access rule(s
 Entra side: set the Zscaler app's groups claim to "Groups assigned to the
 application" to avoid the >150-group overage truncation.
 
+## AWS GovCloud servers — gc-admin / engineers / jz-all-users (2026-06-30)
+
+User-group-based access to GovCloud EC2 (general-vpc + TC VPC, reached via the
+aws-gc connectors over TGW). Targets published **by IP** for now; FQDNs can be
+added (`name.gc.jetzero.aero`). All bound to `aws-gc-zpa-server-grp` (`...747`).
+
+| Segment group | ID | App segment | Targets | Ports | Access rule (open) |
+|---------------|----|-------------|---------|-------|--------------------|
+| `gc-admin-zpa-segment-grp` | `...762` | `gc-admin-rdp-ssh` (`...765`) | `172.30.0.0/16` + `172.32.0.0/20` (all subnet servers) | TCP **22, 3389** | `Allow gc-admin-...` (`...768`) |
+| `gc-engineers-zpa-segment-grp` | `...763` | `gc-license-servers` (`...766`) | TC-GLO `172.30.1.122`, TC-LIC `172.30.1.60`, jz-lic `172.30.1.62` | **all** TCP+UDP | `Allow gc-engineers-...` (`...769`) |
+| | | `gc-teamcenter` (`...767`) | PRD `172.30.1.108`, Sandbox `172.30.1.72`, Dev1 `172.30.1.55`, ACP `172.30.5.129` | TCP 80, 443, 3000, 4544, 8080 | (same rule) |
+| `jz-all-users-zpa-segment-grp` | `...764` | *(pending Tier-4 ports)* | web servers, ctb internal ALBs, misc | TBD | pending |
+
+**Two hard dependencies before any of this passes traffic:**
+1. **Target security groups** must allow the connector subnets (`172.32.10.192/28`, `172.32.10.208/28`) on the app ports — only `utility-win0`/`tc_prod_sg` (3389) is done so far. The rest need SG rules per target/port (large for the gc-admin all-subnets case).
+2. **Group gating:** the three rules are **open (all-auth)** today; restricting to the `gc-admin` / `engineers` / `jz-all-users` Entra groups needs each group's **Object ID** added as a `SAML` condition (attr `...728`). No users provisioned yet, so open exposes nothing for now.
+
+Pending Tier-4 (ports TBD): Cadenas, capital-essentials, SyndeiaCloudWithRLM,
+jetzeroteamworkcloud, licproxy, linux0; web (80/443?) awg-web, kol-web, map-web,
+simplerisk; the `ctb-*-frontend-private` internal ALBs.
+
 ## Per-environment publishing strategy
 
 `corp.jetzero.aero` resources exist in **more than one** network, so a single
