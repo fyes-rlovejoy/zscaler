@@ -53,8 +53,36 @@ group was created for these apps.
 | App segment | `lgb-dfs1-smb` | `72058199628316761` | exact `lgb-dfs1.corp.jetzero.aero` TCP **445** — DFS namespace server (un-shadows the wildcard) |
 | Access rule | `Allow lgb-zpa-segment-grp` | `72058199628316754` | ALLOW to all authenticated users (covers all lgb apps above) |
 
-### FSx ONTAP SMB — Multichannel gotcha
-`net use \\fsxtank0…\pub0` returned **error 64** (session established then dropped) — the classic **SMB Multichannel** symptom over ZPA: the ONTAP SVM advertises its data-LIF IPs and the client opens extra channels straight to those IPs, which aren't reachable through the app tunnel. Stopgap (2026-06-30): added all six FSx LIF IPs to `gc-fsxtank0-smb` so the channels tunnel. **Durable fix (recommended, storage side):** disable Multichannel on the SVM — `vserver cifs options modify -vserver fsxTank0 -is-multichannel-enabled false` — then the extra LIF IPs are unnecessary. (`net view` returning error 53 is a weak signal — SMB enumeration generally doesn't work over ZPA.)
+### FSx ONTAP SMB (`gc-fsxtank0-smb`) — resolved: it was group membership, not the network
+`net use \\fsxtank0.gc.jetzero.aero\pub0` failed for an engineer with **error 64**
+("network name no longer available"), and `net view` gave **error 53**. We chased
+several network theories (SMB Multichannel, MTU, DNS/Kerberos, DC-locator) — **all
+wrong.** The definitive diagnosis came from the **ZPA Access Log**, which showed:
+
+```
+status:          BRK_MT_SETUP_FAIL_NO_POLICY_FOUND
+domain:          fsxtank0.gc.jetzero.aero
+applicationName: gc-fsxtank0-smb   (app segment matched)
+connectorName:   Unavailable        (never reached a connector)
+```
+
+`NO_POLICY_FOUND` = ZPA matched the app segment but **no Access Policy rule
+permitted the user**, so the broker closed the flow **before it ever touched a
+connector**. Root cause: the user was **not a member of `NX_TC_Security`**, the
+Entra group the engineers rule (`...769`) is gated to — so the SAML groups claim
+didn't carry it and the rule denied. (Everything the client saw — "can't find",
+error 64/53, the odd `100.64.x.x` ping — was downstream of that policy deny; the
+`100.64` IP is just ZPA's synthetic IP, i.e. interception working normally.)
+
+**Fix:** add the user to `NX_TC_Security` (and ensure the group is *assigned* to the
+Zscaler ZPA app in Entra), then ZCC **Logout → Login** to mint a fresh SAML
+assertion. Verified working 2026-06-30. Segment reverted to a clean
+`fsxtank0.gc.jetzero.aero:445` (the LIF-IP / all-ports experiments were removed).
+
+See [troubleshooting.md](troubleshooting.md) for the full method and the ZPA
+status-code cheat-sheet — **the lesson: read the ZPA Access Log status first;
+`BRK_MT_SETUP_FAIL_NO_POLICY_FOUND` is a policy/identity problem, never a network
+one.**
 
 ### AD / DFS / SMB design notes
 - **DFS is a domain-based namespace** (`\\corp.jetzero.aero\…`). The client gets a referral from a DC → namespace server (`lgb-dfs1`) → file target (`lgb-nas0`, `10.1.10.18` *(changes)*). So we publish: `corp.jetzero.aero` + the DC (`lgb-ad-services`) and **all** corp file targets via the **`*.corp.jetzero.aero`:445 wildcard** (`lgb-corp-smb`) — IP-churn-proof, SMB-only (not VPN).
@@ -113,6 +141,15 @@ Entra side: set the Zscaler ZPA app's **groups claim** to "Groups assigned to th
 application" (avoids the >150-group overage) and **assign** these groups + the
 general user population to the app (app assignment = who can use ZPA at all).
 
+> ⚠️ **Gating gotcha (cost us the fsxtank0 saga, 2026-06-30):** for a gated rule to
+> match, three things must all be true — (1) the user is a **member** of the Entra
+> group, (2) the group is **assigned to the Zscaler ZPA app** (required when the
+> claim is scoped to "Groups assigned to the application" — otherwise Entra omits it
+> even for members), and (3) the user has **re-authenticated** since the change (ZCC
+> Logout → Login) so the new group is in the SAML assertion. Miss any one and the
+> rule denies with `BRK_MT_SETUP_FAIL_NO_POLICY_FOUND` — see
+> [troubleshooting.md](troubleshooting.md).
+
 ## AWS GovCloud servers — gc-admin / engineers / jz-all-users (2026-06-30)
 
 User-group-based access to GovCloud EC2 (general-vpc + TC VPC, reached via the
@@ -127,7 +164,7 @@ all-ports wildcard was retired). All bound to `aws-gc-zpa-server-grp` (`...747`)
 | | | `aws-gc-utility-win0-rdp` (`...749`) | `utility-win0.gc.jetzero.aero` (**admin-only**) | TCP 3389 | (same rule) |
 | `gc-engineers-zpa-segment-grp` | `...763` | `gc-license-servers` (`...766`) | `tc-glo` / `tc-lic` / `jz-lic`.gc.jetzero.aero | **all** TCP+UDP | `Allow gc-engineers-...` (`...769`) |
 | | | `gc-teamcenter` (`...767`) | `prd` / `sandbox` / `dev1` / `acp`.gc.jetzero.aero | TCP 80, 443, 3000, 4544, 8080 | (same rule) |
-| | | `gc-fsxtank0-smb` (`...772`) | `fsxtank0.gc.jetzero.aero` + FSx LIF IPs `172.30.1.{111,131,173,193,210,215}` | TCP 445 | (same rule) |
+| | | `gc-fsxtank0-smb` (`...772`) | `fsxtank0.gc.jetzero.aero` (FSx ONTAP SVM SMB LIF `172.30.1.193`) | TCP 445 | (same rule) |
 | `jz-all-users-zpa-segment-grp` | `...764` | `gc-ad-services` (`...773`) | `gc.jetzero.aero` + `*.gc.jetzero.aero` — gc AD/DC (Kerberos/LDAP/locator) | TCP 53/88/135/389/464, UDP 53/88/389/464 | `Allow jz-all-users-...` (`...771`) |
 | | | *(web / ctb ALBs — pending Tier-4 ports)* | | TBD | |
 
