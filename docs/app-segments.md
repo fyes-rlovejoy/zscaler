@@ -53,6 +53,9 @@ group was created for these apps.
 | App segment | `lgb-dfs1-smb` | `72058199628316761` | exact `lgb-dfs1.corp.jetzero.aero` TCP **445** — DFS namespace server (un-shadows the wildcard) |
 | Access rule | `Allow lgb-zpa-segment-grp` | `72058199628316754` | ALLOW to all authenticated users (covers all lgb apps above) |
 
+### FSx ONTAP SMB — Multichannel gotcha
+`net use \\fsxtank0…\pub0` returned **error 64** (session established then dropped) — the classic **SMB Multichannel** symptom over ZPA: the ONTAP SVM advertises its data-LIF IPs and the client opens extra channels straight to those IPs, which aren't reachable through the app tunnel. Stopgap (2026-06-30): added all six FSx LIF IPs to `gc-fsxtank0-smb` so the channels tunnel. **Durable fix (recommended, storage side):** disable Multichannel on the SVM — `vserver cifs options modify -vserver fsxTank0 -is-multichannel-enabled false` — then the extra LIF IPs are unnecessary. (`net view` returning error 53 is a weak signal — SMB enumeration generally doesn't work over ZPA.)
+
 ### AD / DFS / SMB design notes
 - **DFS is a domain-based namespace** (`\\corp.jetzero.aero\…`). The client gets a referral from a DC → namespace server (`lgb-dfs1`) → file target (`lgb-nas0`, `10.1.10.18` *(changes)*). So we publish: `corp.jetzero.aero` + the DC (`lgb-ad-services`) and **all** corp file targets via the **`*.corp.jetzero.aero`:445 wildcard** (`lgb-corp-smb`) — IP-churn-proof, SMB-only (not VPN).
 - **Most-specific-match shadowing gotcha (real one we hit):** the DFS referral for `\\corp.jetzero.aero\share` is FQDN (`\\LGB-DFS1.CORP.JETZERO.AERO\Share`), so the namespace server is `lgb-dfs1`. But `lgb-dfs1` already had an **exact-FQDN** segment (`LGB-DFS1-RDP`, 3389 only); ZPA matches the most-specific domain segment, so SMB **445** to `lgb-dfs1` was shadowed out (the `*.corp:445` wildcard is less specific and didn't apply). `lgb-nas0` worked only because it had no exact segment. Fix: an **exact** `lgb-dfs1-smb` (`...761`, `lgb-dfs1.corp.jetzero.aero:445`) in the user group. **Lesson:** if an FQDN has any exact segment, every port you need for that FQDN must be on an exact segment too — the wildcard won't backfill it.
@@ -124,7 +127,7 @@ all-ports wildcard was retired). All bound to `aws-gc-zpa-server-grp` (`...747`)
 | | | `aws-gc-utility-win0-rdp` (`...749`) | `utility-win0.gc.jetzero.aero` (**admin-only**) | TCP 3389 | (same rule) |
 | `gc-engineers-zpa-segment-grp` | `...763` | `gc-license-servers` (`...766`) | `tc-glo` / `tc-lic` / `jz-lic`.gc.jetzero.aero | **all** TCP+UDP | `Allow gc-engineers-...` (`...769`) |
 | | | `gc-teamcenter` (`...767`) | `prd` / `sandbox` / `dev1` / `acp`.gc.jetzero.aero | TCP 80, 443, 3000, 4544, 8080 | (same rule) |
-| | | `gc-fsxtank0-smb` (`...772`) | `fsxtank0.gc.jetzero.aero` (FSx ONTAP SVM, SMB → `172.30.1.193`) | TCP 445 | (same rule) |
+| | | `gc-fsxtank0-smb` (`...772`) | `fsxtank0.gc.jetzero.aero` + FSx LIF IPs `172.30.1.{111,131,173,193,210,215}` | TCP 445 | (same rule) |
 | `jz-all-users-zpa-segment-grp` | `...764` | `gc-ad-services` (`...773`) | `gc.jetzero.aero` + `*.gc.jetzero.aero` — gc AD/DC (Kerberos/LDAP/locator) | TCP 53/88/135/389/464, UDP 53/88/389/464 | `Allow jz-all-users-...` (`...771`) |
 | | | *(web / ctb ALBs — pending Tier-4 ports)* | | TBD | |
 
