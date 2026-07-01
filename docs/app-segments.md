@@ -97,7 +97,7 @@ Structure is now in place so enforcing admin-only later is a **one-line change t
 | Segment group | ID | Apps | Access rule (today) | Later |
 |---------------|----|------|---------------------|-------|
 | `lgb-zpa-segment-grp` (user) | `72058199628316751` | `lgb-ad-services`, `lgb-corp-smb`, `lgb-dfs1-smb` | `Allow lgb-zpa-segment-grp` (`...754`) — all auth | keep (users) |
-| `lgb-admin-zpa-segment-grp` (admin) | `72058199628316758` | `LGB-DFS1-RDP` (3389), `lgb-pve0` (22/80/443), `lgb-dc1-rdp` (3389, `lgb-dc1.corp.jetzero.aero`/`10.1.130.10`) | `Allow lgb-admin-zpa-segment-grp` (`72058199628316759`) — all auth | **add SAML groups = admin Entra group** to rule `...759` |
+| `lgb-admin-zpa-segment-grp` (admin) | `72058199628316758` | `LGB-DFS1-RDP` (3389), `lgb-pve0` (22/80/443), `lgb-dc1-rdp` (3389, `lgb-dc1.corp.jetzero.aero`/`10.1.130.10`), `lgb-winutil0-rdp` (`...774`, 3389, `lgb-winutil0.corp.jetzero.aero` — FQDN only) | `Allow lgb-admin-zpa-segment-grp` (`72058199628316759`) — gated to `zpa-lgb-admin` | ✅ gated |
 
 To enforce admin-only later, add an identity operand to rule `72058199628316759`:
 `{"objectType":"SAML","lhs":"72058199628316728","rhs":"<admin Entra group Object ID>"}`.
