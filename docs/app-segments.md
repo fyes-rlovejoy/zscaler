@@ -125,7 +125,8 @@ all-ports wildcard was retired). All bound to `aws-gc-zpa-server-grp` (`...747`)
 | `gc-engineers-zpa-segment-grp` | `...763` | `gc-license-servers` (`...766`) | `tc-glo` / `tc-lic` / `jz-lic`.gc.jetzero.aero | **all** TCP+UDP | `Allow gc-engineers-...` (`...769`) |
 | | | `gc-teamcenter` (`...767`) | `prd` / `sandbox` / `dev1` / `acp`.gc.jetzero.aero | TCP 80, 443, 3000, 4544, 8080 | (same rule) |
 | | | `gc-fsxtank0-smb` (`...772`) | `fsxtank0.gc.jetzero.aero` (FSx ONTAP SVM, SMB → `172.30.1.193`) | TCP 445 | (same rule) |
-| `jz-all-users-zpa-segment-grp` | `...764` | *(empty — web / ctb ALBs pending Tier-4 ports)* | | TBD | `Allow jz-all-users-...` (`...771`) |
+| `jz-all-users-zpa-segment-grp` | `...764` | `gc-ad-services` (`...773`) | `gc.jetzero.aero` + `*.gc.jetzero.aero` — gc AD/DC (Kerberos/LDAP/locator) | TCP 53/88/135/389/464, UDP 53/88/389/464 | `Allow jz-all-users-...` (`...771`) |
+| | | *(web / ctb ALBs — pending Tier-4 ports)* | | TBD | |
 
 **Most-specific-match (by design):** gc-admin **by-name** RDP/SSH to the engineer
 hosts (prd/sandbox/dev1/acp, tc-glo/tc-lic/jz-lic) and utility-win0 is shadowed by
